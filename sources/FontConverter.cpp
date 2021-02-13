@@ -1,5 +1,6 @@
 
 #include <math.h>
+#include <vector>
 #include <string.h>
 #include <iostream>
 #include <fstream>
@@ -10,6 +11,7 @@
 #include <filesystem>
 #include "Utils/Character.h"
 #include "Utils/ArrayOperations.h"
+
 
 int char_height;
 int size;
@@ -417,6 +419,7 @@ void build_characters_list(std::vector<uint8_t> buffer_font_file){
 			std::vector<unsigned int> utf32line;
 			utf8::utf8to32(str.begin(), str.end(), std::back_inserter(utf32line));
 			code = utf32line[0];
+			std::cout << "Code for added character: " << std::hex << code << std::endl;
 			chrs.push_back(Character(-1,code,-1));
 		}
     }
@@ -447,7 +450,24 @@ std::vector<unsigned char> create_bitmap(FT_Bitmap*  bitmap,
 	if (column_number<5) offset_before_next_chr = column_number+3;
 	//we also prevent a negative y position
 	if ((offset_y>0x7F)) offset_y = 0;
-	std::vector<unsigned char> header = {0,0,0,0,offset_before_next_chr,0,line_number,0,0,0,offset_y,0,0,0,0,0};
+	std::vector<unsigned char> header = {};
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(offset_before_next_chr);
+	header.push_back(0);
+	header.push_back(line_number);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(offset_y);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(0);
+	header.push_back(0);
+	
 	//first, we build the bitmap :
 	unsigned char image[line_number][column_number];
 	for ( j = 0; j<line_number; j++){
@@ -487,6 +507,8 @@ std::vector<unsigned char> create_bitmap(FT_Bitmap*  bitmap,
 		}
 	}
 	//our bitmap is done, now we need to translate it to the font format.
+	
+	
 	std::vector<unsigned char> total;
 	std::vector<unsigned char> total_row_section;
 	std::vector<unsigned char> total_info_section;
@@ -552,7 +574,13 @@ std::vector<unsigned char> create_bitmap(FT_Bitmap*  bitmap,
 	total_row_section.push_back((unsigned char) 0x00);
 	total_row_section.push_back((unsigned char) 0x00);
 	total_row_section.push_back((unsigned char) 0x00);
+	
+	if ((header.size()) > 0x10) {
+		std::cout << "There was some mysterious (stack?) problem."; //I actually don't know what caused this problem once, really
+		scanf("%d");
+	}
 	total.insert(total.end(), header.begin(), header.end());
+	
 	total.insert(total.end(), total_info_section.begin(), total_info_section.end());
 	total.insert(total.end(), total_row_section.begin(), total_row_section.end());
 	
@@ -623,14 +651,17 @@ int main( int     argc,
 	build_characters_list(buffer_font_file);
 	std::stringstream ss;
 	std::cout << "Converting the font..." << std::endl;
+	
 	for (auto it = chrs.begin(); it!= chrs.end(); it++){
-		
+		std::cout << "Rendering the character with UTF32 = " << std::hex << it->utf32 << std::endl;
 		bool success = true;
 		error = FT_Init_FreeType( &library );   
 		error = FT_New_Face(library, font.c_str(), 0, &face );
 		error = FT_Set_Char_Size(face, size * 64, 0, 44, 44);
+		
 		slot = face->glyph;
 		code = FT_Get_Char_Index(face, it->utf32);
+		
 		
 		if (code != 0){
 			successful_characters++;
@@ -645,10 +676,12 @@ int main( int     argc,
 				int original_length = 0;
 				
 				std::vector<unsigned char> letter = draw_character(code,&length, char_height, library, face, slot);
+				
 				int bytes_changed = letter.size() - original_length;
 				total_number_of_chars++;
 				std::vector<unsigned char> int_bytes = intToByteArray(total_number_of_chars);
 				std::vector<unsigned char> next_available_position_bytes = intToByteArray(next_available_position); //computing offset
+				
 				applyChange(0, int_bytes,  4, buffer_font_file); //updating the number of chars in file
 				applyChange(total_number_of_chars * 4 + 2, next_available_position_bytes,  0, buffer_font_file); //adding the offset*/
 				
@@ -659,7 +692,9 @@ int main( int     argc,
 				update_offsets(buffer_font_file, it->addr_in_file, bytes_changed, total_number_of_chars);
 				
 				applyChange(it->addr_in_file, letter,  original_length, buffer_font_file);
+				
 				it->sjis = get_sjis_from_number((total_number_of_chars*4-4)/4);
+				
 				ss << *it;
 			}
 			else{ 
@@ -673,11 +708,13 @@ int main( int     argc,
 				next_available_position = next_available_position + bytes_changed;
 			}
 			
+		} else{
+			std::cout << "The font doesn't include this character" << std::endl;
 		}
 
 	}
-	
-	
+	std::cout << "The rendering of the font was successful (all the renderable characters have been rendered)" << std::endl;
+	scanf("%d");
 	std::ofstream writeFontFile;
 	writeFontFile.open(full_output_pathcstr, std::ios::out | std::ios::binary);
 	writeFontFile.write((const char*)&buffer_font_file[0], buffer_font_file.size());
