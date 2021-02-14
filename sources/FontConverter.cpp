@@ -714,7 +714,7 @@ int main( int     argc,
 
 	}
 	std::cout << "The rendering of the font was successful (all the renderable characters have been rendered)" << std::endl;
-	scanf("%d");
+	
 	std::ofstream writeFontFile;
 	writeFontFile.open(full_output_pathcstr, std::ios::out | std::ios::binary);
 	writeFontFile.write((const char*)&buffer_font_file[0], buffer_font_file.size());
@@ -724,6 +724,7 @@ int main( int     argc,
 	writeIniFile.open(output_inicstr, std::ios::out);
 	writeIniFile << ss.rdbuf();
 	writeIniFile.close(); 
+	scanf("%d");
 	
 	
 	return 0;
