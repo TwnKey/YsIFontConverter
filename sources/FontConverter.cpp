@@ -97,36 +97,43 @@ void update_offsets(std::vector<unsigned char> &buffer, int pos, int bytes_added
 /*get_code2 finds the code used inside the font file of the character specified by SJIS encoding 
 (or at least I believe it was intended to be SJIS)*/
 int get_code2(int sjis, std::vector<unsigned char> &buffer){
-	
-	int poids_fort = sjis >> 8 & 0xff; 
+	//F0A3
+	int poids_fort = sjis >> 8 & 0xff;  //=> 0xF0
 	int iVar4;
-	int poids_faible = (sjis & 0xff);
+	int poids_faible = (sjis & 0xff); //=> 0xA3
 	int iVar1;
-	if (poids_fort < 0xc0) { 
+	if (poids_fort < 0xc0) { // 0xF0 >= 0xC0
 		iVar4 = -0x81;
 	}
 	else {
-		iVar4 = -0xc1;
+		iVar4 = -0xc1; //iVar4 = -0xC1
 	}
-	if (poids_faible < 0x80) { 
+	if (poids_faible < 0x80) { //0xA3>=0x80
 		iVar1 = -0x40;
 	}
 	else {
-		iVar1 = -0x41;
+		iVar1 = -0x41; //iVar1 = -0x41
 		
 	} 
-	return (poids_fort + iVar4) * 0xbc + poids_faible + iVar1;
-	}
+	return (poids_fort + iVar4) * 0xbc + poids_faible + iVar1; //(poids_fort + iVar4) = F0 - C1 = 2F // poids_faible + iVar1 = 0xA3 - 0x41 = 0x62
+	} //code for F0A3 = 22E6
 /*get_sjis_from_number does the opposite of get_code2 (finds the sjis for the character specified by its code*/
-int	get_sjis_from_number(int ID){ 
+int	get_sjis_from_number(int ID){ //22E6
 	int sjis;
-	int fortandIvar4 = ID/0xBC; 
-	int faibleandIvar1 = ID%0xBC; 
+	int fortandIvar4 = ID/0xBC;  //2F
+	int faibleandIvar1 = ID%0xBC;  //62
 	
-	int fort = fortandIvar4 + 0xC1;
-	
-	int faible = faibleandIvar1 + 0x41;
-	sjis = (fort << 8) + faible;
+	int fort1 = fortandIvar4 + 0xC1; //F0
+	int fort2 = fortandIvar4 + 0x81; //B0
+	int fort; 
+	if (fort1 < 0xC0) fort = fort2; // F0 < C0 ? => fort = B0
+	else fort = fort1; // fort = F0
+	int faible1 = faibleandIvar1 + 0x40; //62+40 = A2
+	int faible2 = faibleandIvar1 + 0x41; // 62 + 41 = A3
+	int faible; 
+	if (faible1 >= 0x80) faible = faible2; // A2 >= 80 => faible = A3
+	else faible = faible1; //A2 < 0x80 => faible = A2
+	sjis = (fort << 8) + faible; //F0A3
 	
 	return sjis;
 }
@@ -678,17 +685,23 @@ int main( int     argc,
 				std::vector<unsigned char> letter = draw_character(code,&length, char_height, library, face, slot);
 				
 				int bytes_changed = letter.size() - original_length;
+				
+				
+				
+				
+				
 				total_number_of_chars++;
+				//here total_number_of_chars * 4 + 2 should point to the first character
+				
+				
 				std::vector<unsigned char> int_bytes = intToByteArray(total_number_of_chars);
-				std::vector<unsigned char> next_available_position_bytes = intToByteArray(next_available_position); //computing offset
-				
 				applyChange(0, int_bytes,  4, buffer_font_file); //updating the number of chars in file
-				applyChange(total_number_of_chars * 4 + 2, next_available_position_bytes,  0, buffer_font_file); //adding the offset*/
-				
-				int final_addr = next_available_position + (((total_number_of_chars*4)+2));
+				int final_addr = buffer_font_file.size()+4;
 				it->addr_in_file = final_addr;
-				next_available_position = next_available_position + bytes_changed;// we add the size of the inserted character
 				
+				next_available_position = it->addr_in_file-((total_number_of_chars*4)+2);// we add the size of the inserted character
+				std::vector<unsigned char> next_available_position_bytes = intToByteArray(next_available_position); //computing offset
+				applyChange((total_number_of_chars-1) * 4 + 2, next_available_position_bytes,  0, buffer_font_file); //adding the offset*/
 				update_offsets(buffer_font_file, it->addr_in_file, bytes_changed, total_number_of_chars);
 				
 				applyChange(it->addr_in_file, letter,  original_length, buffer_font_file);
@@ -714,7 +727,7 @@ int main( int     argc,
 
 	}
 	std::cout << "The rendering of the font was successful (all the renderable characters have been rendered)" << std::endl;
-	scanf("%d");
+	
 	std::ofstream writeFontFile;
 	writeFontFile.open(full_output_pathcstr, std::ios::out | std::ios::binary);
 	writeFontFile.write((const char*)&buffer_font_file[0], buffer_font_file.size());
@@ -724,7 +737,7 @@ int main( int     argc,
 	writeIniFile.open(output_inicstr, std::ios::out);
 	writeIniFile << ss.rdbuf();
 	writeIniFile.close(); 
-	
+	scanf("%d");
 	
 	return 0;
 }

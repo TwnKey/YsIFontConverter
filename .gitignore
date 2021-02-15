@@ -5,3 +5,12 @@ fonts/Roboto-Bold.ttf
 libfreetype-6.dll
 outputs/FONT_PSP.SKI
 outputs/text.ini
+config_font.ini
+config_fontv.ini
+FontConverter.exe
+YsIFontConverter.zip
+YsIFontConverter/config_font.ini
+YsIFontConverter/FontConverter.exe
+YsIFontConverter/libgcc_s_dw2-1.dll
+YsIFontConverter/libstdc++-6.dll
+config_font.ini
