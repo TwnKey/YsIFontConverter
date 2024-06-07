@@ -747,11 +747,13 @@ int main( int     argc,
 				int original_length = 0;
 				int length;
 				std::vector<unsigned char> letter = draw_character(code, &length, char_height, library, face, slot);
-				size_index_array++;
+				
 				addr_end_index_array = 4 * size_index_array + 2;
 				char_map[size_index_array] = letter;
 				it->sjis = get_sjis_from_number(size_index_array);
 				ss << *it;
+				size_index_array++;
+				std::cout << std::hex << "it->sjis " << it->sjis << " " << code << std::endl;
 			}
 			else {
 				int length;
@@ -792,7 +794,6 @@ int main( int     argc,
 		std::vector<unsigned char> byte_Array = intToByteArray(current_position);
 		addresses.insert(addresses.end(), byte_Array.begin(), byte_Array.end());
 		letters.insert(letters.end(), entry.second.begin(), entry.second.end());
-		std::cout << "Adding the character with code point = " << std::hex << get_sjis_from_number(entry.first) << " " << " at " << current_position << std::endl;
 		current_position += entry.second.size();
 		
 		current_index_addr = entry.first + 1;
